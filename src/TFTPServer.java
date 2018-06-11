@@ -10,11 +10,11 @@ public class TFTPServer {
 	private boolean initialized;
 	private static String directory = "ServerOutput";
 
-	private boolean verbose = true;
+	private boolean verbose = true; // change into boolean
 
 	private TFTPServer() { 
 		initialized = false; 
-		}
+	}
 	
 	public static TFTPServer instanceOf() {
 		if (instance == null)
@@ -31,13 +31,13 @@ public class TFTPServer {
 		initialized = true;
 
 		while (scanner.hasNextLine()) {
-			String command = scanner.nextLine().toUpperCase();
-			if (command.equals("SHUTDOWN") || command.equals("Q")) {
+			String command = scanner.nextLine().toLowerCase();
+			if (command.equals("shutdown") || command.equals("quit") || command.equals("q")) {
 				System.out.println("Server: Shutdown command received. Completing remaining connection threads and shutting down.");
 				serverWaitThread.killThread();
 				scanner.close();
 				return; 
-			} else if (command.equals("VERBOSE") || command.equals("V")) {
+			} else if (command.equals("verbose") || command.equals("v") || command.equals("display")) {
 				if (isVerbose()) {
 					System.out.println("Server: Verbose mode off.");
 					toggleVerbosity();
@@ -45,7 +45,7 @@ public class TFTPServer {
 					System.out.println("Server: Verbose mode on.");
 					toggleVerbosity();
 				}
-			} else if(command.equals("CD")){
+			} else if(command.equals("changedirectory") || command.equals("cd")){
 				System.out.println("Please enter the directory you would like to change to");
 				directory = scanner.nextLine();
 				System.out.println("Directory changed.");

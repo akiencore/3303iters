@@ -10,14 +10,14 @@ public class TFTPServerDispatcher extends Thread {
     
     public static enum Request {READ, WRITE, ERROR};
 	
-    public static final byte[] READ_RESP = {0, 3, 0, 1};
-    public static final byte[] WRITE_RESP = {0, 4, 0, 0};
+    public static final byte[] READ_RESP = {0, 3, 0, 1}; //read request 4-bytes indicator
+    public static final byte[] WRITE_RESP = {0, 4, 0, 0}; //write request 4-bytes indicator
 
     private static final int SERVER_PORT = 6900;
 
     private static final int DATA_SIZE = 516;
     
-    private boolean verbose = true;
+    private boolean verbose = true; //change into boolean
 
     private DatagramPacket receivePacket;
     private TFTPSocket receiveSocket;
@@ -38,7 +38,9 @@ public class TFTPServerDispatcher extends Thread {
     @Override
     public void run() {
      
-        if (isVerbose()) { System.out.println("Server's Wait Thread: initializing."); }
+        if (isVerbose()) { 
+        	System.out.println("Server's Wait Thread: initializing."); 
+        }
         
         while (isRunning) {
             byte[] data;
@@ -71,7 +73,7 @@ public class TFTPServerDispatcher extends Thread {
 	public boolean isVerbose() {
 		return verbose;
 	}
-        
+    
     public void toggleVerbosity() {
         if (verbose == true) {
             verbose = false;

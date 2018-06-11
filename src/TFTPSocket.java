@@ -9,15 +9,15 @@ import java.net.UnknownHostException;
 public class TFTPSocket {
 	private DatagramSocket socket;
 	
-	public TFTPSocket() {
+	public TFTPSocket() { //no parameters instance
 		socket = bind();
 	}
 	
-	public TFTPSocket(int port) {
+	public TFTPSocket(int port) { //one parameter instance
 		socket = bind(port);
 	}
 	
-	public TFTPSocket(int port, String address) {
+	public TFTPSocket(int port, String address) { //two parameters instance
 		InetAddress inet = null;
 		try {
 			inet = InetAddress.getByName(address);
