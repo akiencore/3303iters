@@ -14,6 +14,8 @@ public class TFTPServer {
 	private static final int SERVER_PORT = 69;
 	
 	private static final int DATA_SIZE = 516;
+	   
+	private boolean verbose = true;
 	
 	public TFTPServer() {
 		try {
@@ -32,25 +34,12 @@ public class TFTPServer {
 		receivePacket = new DatagramPacket(data, data.length);
 		System.out.println("Server: wait for packet.\n");
 		
-		try {
-			System.out.println("Waiting...");
-			receiveSocket.receive(receivePacket);
-		} catch(IOException e) {
-			System.out.print("IO Exception: likely: ");
-			System.out.println("Receive Socket Timed Out.\n" + e);
-			e.printStackTrace();
-			System.exit(1);
+		receiveFromClient(receiveSocket, receivePacket);
+		
+		if(verbose) {
+			printPacketInfo(false, receivePacket);
+			System.out.println("Server-packet received");
 		}
-		
-		System.out.println("Server-Packet Received: ");
-		System.out.println("From Host: " + receivePacket.getAddress());
-		System.out.println("From Port: " + receivePacket.getPort());
-		int len = receivePacket.getLength();
-		System.out.println("Length: " + len);
-		System.out.print("Containing: ");
-		
-		String received = new String(data,0,len);
-		System.out.println(received + "\n");
 		
 		try {
 			Thread.sleep(5000);
@@ -67,65 +56,120 @@ public class TFTPServer {
 		String r = "Null";
 		
 		if(data[1] == 1) { //RRQ
-			System.out.println("RRQ from the client");
-	
 			blockNum = 0;
 			opCode = 3;
 			r = "Server is here.";
 			byte[] rn = r.getBytes();
 			
-			//System.arraycopy(blockNum, 0, msg, 2, 1); //problem
-			System.arraycopy(rn, 0, msg, 4, rn.length); //problem??
+			System.arraycopy(rn, 0, msg, 4, rn.length);
 			
 			msg[1] = opCode;
 			msg[3] = blockNum;
-
-			len = 4 + rn.length;
-			
 		} else if(data[1]==2) { //WRQ
-			System.out.println("WRQ from the client");
-			
 			blockNum = 0;
 			opCode = 4;
 			
-			//System.arraycopy(blockNum, 0, msg, 2, 1); //problem
 			msg[0] = 0;
 			msg[1] = opCode;
 			msg[2]= 0;
 			msg[3] = blockNum;
-			
-			len = 4;
 		}
 		
 		try {
 			sendPacket = new DatagramPacket(msg, msg.length, 
-					InetAddress.getLocalHost(), SERVER_PORT);
+					InetAddress.getLocalHost(), receivePacket.getPort());
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
 	
-		System.out.println("Server-Sending Packet: ");
-		System.out.println("To Host: " + sendPacket.getAddress());
-		System.out.println("To Port: " + SERVER_PORT);
-		System.out.println("Length: " + len);
-		System.out.print("Containing: ");
-		String sending = r;
-		System.out.println(sending + "\n");
+		if(verbose)
+			printPacketInfo(true, sendPacket);
 		
-		try {
-			sendSocket.send(sendPacket);
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+		sendToClient(sendSocket, sendPacket);
 		
-	    System.out.println("Server-packet sent");
+		if(verbose)
+			System.out.println("Server-packet sent");
 	    
 	    sendSocket.close();
 	    receiveSocket.close();
 	}
 	
+	public static void printPacketInfo(boolean isSend, DatagramPacket packet) {
+		if(isSend){
+			System.out.println("\nServer-Sending packet");
+			System.out.println("To Host: " + packet.getAddress());
+		} else {
+			System.out.println("\nServer-Receiving packet");
+			System.out.println("From Host: " + packet.getAddress());
+		}
+		
+		if(packet.getData()[1] == 1){
+			System.out.println("Type: RRQ");
+		} else if(packet.getData()[1] == 2){
+			System.out.println("Type: WRQ");
+		} else if(packet.getData()[1] == 3){
+			System.out.println("Type: DATA");
+		} else if(packet.getData()[1] == 4){
+			System.out.println("Type: ACK");
+		} else {
+			System.out.println("Packet type is undefined");
+		}
+		
+
+		System.out.println("Port: " + packet.getPort());
+		System.out.println("Length: " + packet.getLength());
+		
+		if(packet.getData()[1] == 1 || packet.getData()[1] == 2){
+			System.out.print("Filename: ");
+			int i = 2;
+			byte fName[] = new byte[packet.getLength()];
+			byte mode[] = new byte[packet.getLength()];
+			while(packet.getData()[i] != 0){
+				fName[i-2] = packet.getData()[i];
+				i++;
+			}
+			System.out.println(new String(fName));
+			System.out.print("Mode: ");
+			i++;
+			int j = 0;
+			while(packet.getData()[i] != 0){
+				mode[j] = packet.getData()[i];
+				i++;
+				j++;
+			}
+			System.out.println(new String(mode));
+		}
+		
+		if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){
+			System.out.print("Packet Number: ");
+			System.out.println((((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF));
+		}
+		
+		if(packet.getData()[1] == 3){
+			System.out.println("Size of data(in byte): " + (packet.getLength()-4));
+		}
+	}
+	
+	public static void receiveFromClient(DatagramSocket socket, DatagramPacket packet) {
+		try {
+			socket.receive(packet);
+		} catch(IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
+	public static void sendToClient(DatagramSocket socket, DatagramPacket packet) {
+		try {
+		   socket.send(packet);
+		} catch (IOException e) {
+		   e.printStackTrace();
+		   System.exit(1);
+		}
+	}
+	   
+	   
 	
 	public static void main(String[] args) throws UnknownHostException {
 		TFTPServer server = new TFTPServer();

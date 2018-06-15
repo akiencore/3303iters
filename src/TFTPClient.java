@@ -8,13 +8,14 @@ import java.util.Scanner;
 
 public class TFTPClient{
 
-	   DatagramPacket sendPacket, receivePacket;
-	   DatagramSocket sendReceiveSocket;
+	   private static DatagramPacket sendPacket, receivePacket;
+	   private static DatagramSocket sendReceiveSocket;
 	   
-
-	   private static final int SERVER_PORT = 69;
+	   private static final int CLIENT_PORT = 23;
 		
 	   private static final int DATA_SIZE = 516;
+	   
+	   private static boolean verbose = true;
 	
 	   public TFTPClient() {
 		   try {
@@ -25,28 +26,51 @@ public class TFTPClient{
 		   }
 	   }
 	   
-	   public void TFTPSendAndReceive() {
-		   byte[] fn, md;
-		   String filename, mode; 
+	   @SuppressWarnings("resource")
+	public void TFTPSendAndReceive() {
 		   
 		   String s = "Anyone there?";
 		   System.out.println("Client: sending a packet containing:\n" + s);
-		   
 
-		   System.out.println("The request is a: ");
-		   @SuppressWarnings("resource")
 		   Scanner scanner = new Scanner(System.in);
-		   String pattern = scanner.nextLine().toLowerCase();
+		   
 		   
 		   byte opCode = -1;
-		   if(pattern.equals("rrq") || pattern.equals("read")){
-			   opCode = 1;
-		   } else if (pattern.equals("wrq") || pattern.equals("write")){
-			   opCode = 2;
-		   } else {
-			   System.out.println("Invalid request, exit");
-			   System.exit(1);
+		   
+		   while(true) {
+			   System.out.print("#- ");
+			   String cmd = scanner.nextLine().toLowerCase();
+			   if(cmd.equals("read") || cmd.equals("get")){
+				   opCode = 1;
+				   request(opCode, s);
+			   } else if (cmd.equals("write") || cmd.equals("send")){
+				   opCode = 2;
+				   request(opCode, s);
+			   } else if (cmd.equals("quit") || cmd.equals("exit")) {
+				   System.out.println("Terminating client");
+				   sendReceiveSocket.close();
+			       return;
+			   } else if (cmd.equals("help")) {
+				   helpMenu();
+			   } else if (cmd.equals("verbose")) {
+				   verbose = (!verbose);
+				   if(verbose) {
+					   System.out.println("VERBOSE_ON");
+				   } else {
+					   System.out.println("VERBOSE_OFF");
+				   }
+			   } else if (cmd.length() == 0) {
+				   //pass
+			   } else {
+				   System.out.println("Invalid command");
+				   continue;
+			   }
 		   }
+	   }
+	   
+	   public static void request(byte opCode, String s) {
+		   byte[] fn, md;
+		   String filename, mode; 
 		   
 		   filename = s;
 		   fn = filename.getBytes();
@@ -65,44 +89,29 @@ public class TFTPClient{
 		   
 		   try {
 			   sendPacket = new DatagramPacket(msg, msg.length, 
-					   InetAddress.getLocalHost(), SERVER_PORT);
+					   InetAddress.getLocalHost(), CLIENT_PORT);
 		   } catch (UnknownHostException e) {
 			   e.printStackTrace();
 			   System.exit(1);
 		   }
 		   
-		   System.out.println("Client-Sending Packet: ");
-		   System.out.println("To Host: " + sendPacket.getAddress());
-		   System.out.println("To Port: " + sendPacket.getPort());
-		   System.out.println("Length: " + len);
-		   System.out.print("Containing: ");
-		   String sending = s;
-		   System.out.println(sending);
+		   if (verbose)
+			   printPacketInfo(true, sendPacket);
 		   
 		   sendToServer(sendReceiveSocket, sendPacket);
 		   
-		   System.out.println("Client-Packet Sent.\n");
-		   	   
+		   if (verbose)
+			   System.out.println("Client-packet sent.\n");
 		   
 		   byte[] data = new byte[DATA_SIZE];
 		   receivePacket = new DatagramPacket(data, data.length);
 		   
-		   receiveFromServer(sendReceiveSocket, sendPacket);
+		   receiveFromServer(sendReceiveSocket, receivePacket);
 		   
-		   System.out.println("Client-Receiving Packet: ");
-		   System.out.println("From Host: " + receivePacket.getAddress());
-		   System.out.println("From Port: " + receivePacket.getPort());
-		   len = receivePacket.getLength();
-		   System.out.println("Length: " + len);
-		   System.out.print("Containing: ");
-		   String receiving = new String(data,0,len);
-		   System.out.println(receiving);
-
-		   opCode = data[1];
-		   if(opCode==4)
-			   System.out.println("Request acknowledged");
-		   
-		   sendReceiveSocket.close();
+		   if (verbose) {
+			   printPacketInfo(false, receivePacket);
+			   System.out.println("Client-packet received.\n");
+		   }
 	   }
 	   
 	   public static void sendToServer(DatagramSocket socket, DatagramPacket packet) {
@@ -116,14 +125,75 @@ public class TFTPClient{
 	   
 	   public static void receiveFromServer(DatagramSocket socket, DatagramPacket packet) {
 		   try {
-				System.out.println("Waiting...");
 				socket.receive(packet);
 			} catch(IOException e) {
-				System.out.print("IO Exception: likely: ");
-				System.out.println("Receive Socket Timed Out.\n" + e);
 				e.printStackTrace();
 				System.exit(1);
 			}
+	   }
+	   
+	   public static void printPacketInfo(boolean isSend, DatagramPacket packet) {
+			if(isSend){
+				System.out.println("\nClient-Sending packet");
+				System.out.println("To Host: " + packet.getAddress());
+			} else {
+				System.out.println("\nClient-Receiving packet");
+				System.out.println("From Host: " + packet.getAddress());
+			}
+			
+			if(packet.getData()[1] == 1){
+				System.out.println("Type: RRQ");
+			} else if(packet.getData()[1] == 2){
+				System.out.println("Type: WRQ");
+			} else if(packet.getData()[1] == 3){
+				System.out.println("Type: DATA");
+			} else if(packet.getData()[1] == 4){
+				System.out.println("Type: ACK");
+			} else {
+				System.out.println("Packet type is undefined");
+			}
+			
+
+			System.out.println("Port: " + packet.getPort());
+			System.out.println("Length: " + packet.getLength());
+			
+			if(packet.getData()[1] == 1 || packet.getData()[1] == 2){
+				System.out.print("Filename: ");
+				int i = 2;
+				byte fName[] = new byte[packet.getLength()];
+				byte mode[] = new byte[packet.getLength()];
+				while(packet.getData()[i] != 0){
+					fName[i-2] = packet.getData()[i];
+					i++;
+				}
+				System.out.println(new String(fName));
+				System.out.print("Mode: ");
+				i++;
+				int j = 0;
+				while(packet.getData()[i] != 0){
+					mode[j] = packet.getData()[i];
+					i++;
+					j++;
+				}
+				System.out.println(new String(mode));
+			}
+			
+			if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){
+				System.out.print("Packet Number: ");
+				System.out.println((((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF));
+			}
+			
+			if(packet.getData()[1] == 3){
+				System.out.println("Size of data(in byte): " + (packet.getLength()-4));
+			}
+		}
+	   
+	   public static void helpMenu() {
+		   System.out.println("		read/get - get a file to server" + "\n"
+		   					+ "	  write/send - send a file to server" + "\n"
+		   					+ "	    man/help - print this menu" + "\n"
+		   					+ "		 verbose - change the complexity of display" + "\n"
+				   			+ "	   exit/quit - exit the client" + "\n");
 	   }
 	   
 	   public static void main(String[] args) {
