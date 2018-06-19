@@ -26,7 +26,7 @@ public class TFTPErrorSimulator {
 	public TFTPErrorSimulator() {
 		try {
 			clientSocket = new DatagramSocket(CLIENT_PORT);
-			serverSocket = new DatagramSocket(); // problem
+			serverSocket = new DatagramSocket(); 
 		} catch(SocketException se) {
 			se.printStackTrace();
 			System.exit(1);
@@ -37,15 +37,22 @@ public class TFTPErrorSimulator {
 		if(instance == null) {
 			instance = new TFTPErrorSimulator();
 		}
-		
 		return instance;
 	}
 	
 	public void intermediate() throws UnknownHostException {
-		sAdd = InetAddress.getLocalHost();
 		
-		System.out.println("Error Simulator is ready.");
+		System.out.println("\nError Simulator is ready.");
 		byte[] data;
+		
+
+		try {
+			sAdd= InetAddress.getLocalHost();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+		System.out.println("\nError Simulator is working.");
+		
 		data = new byte[DATA_SIZE];
 		receivePacket = new DatagramPacket(data, DATA_SIZE);
 		
@@ -54,7 +61,7 @@ public class TFTPErrorSimulator {
 		
 		toReceivePacket(clientSocket, receivePacket);
 		if (verbose)
-		printPacketInfo(false,receivePacket);
+			printPacketInfo(false,receivePacket);
 		
 		cPort = receivePacket.getPort();
 		cAdd = receivePacket.getAddress();
@@ -63,25 +70,60 @@ public class TFTPErrorSimulator {
 		
 		toSendPacket(serverSocket, sendPacket);
 		if (verbose)
-		printPacketInfo(true,sendPacket);
+			printPacketInfo(true,sendPacket);
 		
 		data = new byte[DATA_SIZE];
 		receivePacket = new DatagramPacket(data, DATA_SIZE);
-
+	
 		if (verbose)
 			System.out.println("\nSimulator is waiting for packet.");
-		
+			
 		toReceivePacket(serverSocket, receivePacket);
 		if (verbose)
-		printPacketInfo(false,receivePacket);
-		
+			printPacketInfo(false,receivePacket);
+			
 		sPort = receivePacket.getPort();
 		
 		sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), cAdd, cPort);
 		
 		toSendPacket(clientSocket, sendPacket);
 		if (verbose)
-		printPacketInfo(true,sendPacket);
+			printPacketInfo(true,sendPacket);
+		
+		while(true) {
+			data = new byte[DATA_SIZE];
+			if (verbose)
+				System.out.println("\nSimulator is waiting for packet.");
+			
+			receivePacket = new DatagramPacket(data, DATA_SIZE);
+
+			toReceivePacket(clientSocket, receivePacket);
+			
+			if (verbose)
+				printPacketInfo(false, receivePacket);
+			
+			sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), sAdd, sPort);
+			
+			toSendPacket(serverSocket, sendPacket);
+			if (verbose)
+				printPacketInfo(true,sendPacket);
+			
+			data = new byte[DATA_SIZE];
+			if (verbose)
+				System.out.println("\nSimulator is waiting for packet.");
+			
+			receivePacket = new DatagramPacket(data, DATA_SIZE);
+					
+			toReceivePacket(serverSocket, receivePacket);
+			if (verbose)
+				printPacketInfo(false,receivePacket);
+				
+			sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), cAdd, cPort);
+					
+			toSendPacket(clientSocket, sendPacket);
+			if (verbose)
+				printPacketInfo(true,sendPacket);
+		}
 	}
 	
 	public static void toReceivePacket(DatagramSocket socket, DatagramPacket packet) {

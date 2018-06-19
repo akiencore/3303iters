@@ -26,7 +26,7 @@ public class TFTPClient{
 		   }
 	   }
 	   
-	   @SuppressWarnings("resource")
+	@SuppressWarnings("resource")
 	public void TFTPSendAndReceive() {
 		   
 		   String s = "Anyone there?";
@@ -49,16 +49,12 @@ public class TFTPClient{
 			   } else if (cmd.equals("quit") || cmd.equals("exit")) {
 				   System.out.println("Terminating client");
 				   sendReceiveSocket.close();
+				   scanner.close();
 			       return;
 			   } else if (cmd.equals("help")) {
 				   helpMenu();
 			   } else if (cmd.equals("verbose")) {
-				   verbose = (!verbose);
-				   if(verbose) {
-					   System.out.println("VERBOSE_ON");
-				   } else {
-					   System.out.println("VERBOSE_OFF");
-				   }
+				   toggleVerbosity();
 			   } else if (cmd.length() == 0) {
 				   //pass
 			   } else {
@@ -194,6 +190,15 @@ public class TFTPClient{
 		   					+ "	    man/help - print this menu" + "\n"
 		   					+ "		 verbose - change the complexity of display" + "\n"
 				   			+ "	   exit/quit - exit the client" + "\n");
+	   }
+
+	   public void toggleVerbosity() {
+		   verbose = (!verbose);
+		   if(verbose) {
+			   System.out.println("VERBOSE_ON");
+		   } else {
+			   System.out.println("VERBOSE_OFF");
+		   }
 	   }
 	   
 	   public static void main(String[] args) {

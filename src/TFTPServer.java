@@ -4,95 +4,61 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Scanner;
 
 public class TFTPServer {
-	DatagramPacket sendPacket, receivePacket;
-	DatagramSocket sendSocket, receiveSocket;
+
+	private static TFTPServer instance = null;
 	
 	private String serverFolder = System.getProperty("user.dir") + "server_files";
 	
-	private static final int SERVER_PORT = 69;
+	private static boolean verbose = true;
 	
-	private static final int DATA_SIZE = 516;
-	   
-	private boolean verbose = true;
+	private TFTPRequestHandler serverHandler;
+
+	private boolean initialized;
 	
-	public TFTPServer() {
-		try {
-			sendSocket = new DatagramSocket();
-			
-			receiveSocket = new DatagramSocket(SERVER_PORT);
-			
-		} catch (SocketException se) {
-			se.printStackTrace();
-			System.exit(1);
-		}
+	public TFTPServer() { 
+		initialized = false; 
 	}
 	
-	public void TFTPReceiveAndSend() throws UnknownHostException {
-		byte data[] = new byte[DATA_SIZE];
-		receivePacket = new DatagramPacket(data, data.length);
-		System.out.println("Server: wait for packet.\n");
-		
-		receiveFromClient(receiveSocket, receivePacket);
-		
-		if(verbose) {
-			printPacketInfo(false, receivePacket);
-			System.out.println("Server-packet received");
-		}
-		
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
-		
-
-		byte opCode = -1;
-		byte blockNum = -1;
-		byte[] msg = new byte[DATA_SIZE];
-		
-		String r = "Null";
-		
-		if(data[1] == 1) { //RRQ
-			blockNum = 0;
-			opCode = 3;
-			r = "Server is here.";
-			byte[] rn = r.getBytes();
-			
-			System.arraycopy(rn, 0, msg, 4, rn.length);
-			
-			msg[1] = opCode;
-			msg[3] = blockNum;
-		} else if(data[1]==2) { //WRQ
-			blockNum = 0;
-			opCode = 4;
-			
-			msg[0] = 0;
-			msg[1] = opCode;
-			msg[2]= 0;
-			msg[3] = blockNum;
-		}
-		
-		try {
-			sendPacket = new DatagramPacket(msg, msg.length, 
-					InetAddress.getLocalHost(), receivePacket.getPort());
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+	public static TFTPServer instanceOf() {
+		if (instance == null)
+			instance = new TFTPServer();
+		return instance;
+	}
 	
-		if(verbose)
-			printPacketInfo(true, sendPacket);
+	public void TFTPReceiveAndSend() throws SocketException {
+		System.out.println("Server initialized.");
+		Scanner scanner = new Scanner(System.in);
 		
-		sendToClient(sendSocket, sendPacket);
+		serverHandler = new TFTPRequestHandler();
+		serverHandler.start();
 		
-		if(verbose)
-			System.out.println("Server-packet sent");
-	    
-	    sendSocket.close();
-	    receiveSocket.close();
+		initialized = true;
+		
+		while (true) {
+			System.out.print("#- ");
+			String cmd = scanner.nextLine().toLowerCase();
+			if (cmd.equals("quit") || cmd.equals("exit")) {
+				System.out.println("Terminating client");
+				serverHandler.killThread();
+				scanner.close();
+			    return;
+			} else if (cmd.equals("verbose")) {
+				verbose = (!verbose);
+				if(verbose) {
+					System.out.println("VERBOSE_ON");
+				} else {
+					System.out.println("VERBOSE_OFF");
+				}
+			} else if (cmd.length() == 0) {
+				//pass
+			} else {
+				System.out.println("Invalid command");
+				continue;
+			}
+		}
 	}
 	
 	public static void printPacketInfo(boolean isSend, DatagramPacket packet) {
@@ -169,10 +135,22 @@ public class TFTPServer {
 		}
 	}
 	   
-	   
+	public void toggleVerbosity() {
+		verbose = (!verbose);
+		if(verbose) {
+			System.out.println("VERBOSE_ON");
+			serverHandler.toggleVerbosity();
+		} else {
+			System.out.println("VERBOSE_OFF");
+			serverHandler.toggleVerbosity();
+		}
+	}
+	public static boolean isVerbose() {
+		return verbose;
+	}
 	
-	public static void main(String[] args) throws UnknownHostException {
-		TFTPServer server = new TFTPServer();
+	public static void main(String[] args) throws UnknownHostException, SocketException {
+		TFTPServer server = TFTPServer.instanceOf();
 		server.TFTPReceiveAndSend();
 	}
 }
