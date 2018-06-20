@@ -14,7 +14,7 @@ public class TFTPServer {
 	
 	private static boolean verbose = true;
 	
-	private TFTPRequestHandler serverHandler;
+	private TFTPRequestListener serverListener;
 
 	private boolean initialized;
 	
@@ -32,8 +32,8 @@ public class TFTPServer {
 		System.out.println("Server initialized.");
 		Scanner scanner = new Scanner(System.in);
 		
-		serverHandler = new TFTPRequestHandler();
-		serverHandler.start();
+		serverListener = new TFTPRequestListener();
+		serverListener.start();
 		
 		initialized = true;
 		
@@ -42,7 +42,7 @@ public class TFTPServer {
 			String cmd = scanner.nextLine().toLowerCase();
 			if (cmd.equals("quit") || cmd.equals("exit")) {
 				System.out.println("Terminating client");
-				serverHandler.killThread();
+				serverListener.killThread();
 				scanner.close();
 			    return;
 			} else if (cmd.equals("verbose")) {
@@ -139,10 +139,10 @@ public class TFTPServer {
 		verbose = (!verbose);
 		if(verbose) {
 			System.out.println("VERBOSE_ON");
-			serverHandler.toggleVerbosity();
+			serverListener.toggleVerbosity();
 		} else {
 			System.out.println("VERBOSE_OFF");
-			serverHandler.toggleVerbosity();
+			serverListener.toggleVerbosity();
 		}
 	}
 	public static boolean isVerbose() {
