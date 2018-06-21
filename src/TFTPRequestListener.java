@@ -3,23 +3,21 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 
 public class TFTPRequestListener extends Thread { 
 	private DatagramPacket receivePacket;
 	private DatagramSocket receiveSocket;
 	
-	private static final int SERVER_PORT = 69;
+	private static final int SERVER_PORT = 69; //default port of the server
 	
-	private static final int DATA_SIZE = 516;
+	private static final int DATA_SIZE = 516; //data size
 	
-	private static boolean verbose = true; 
+	private static boolean verbose = true; //display complexity
 	
-	private static boolean running = false;
-    private static int threadNumber;
-	private InetAddress clientAddress;
+	private static boolean running = false; //is the listener running
+    private static int threadNumber; //total # of threads
 
-    TFTPRequestHandler requestHandler = null;
+    TFTPRequestHandler requestHandler = null; //instance of the requestHandler
 
 	public TFTPRequestListener() throws SocketException {
 		try {
@@ -44,7 +42,6 @@ public class TFTPRequestListener extends Thread {
 				System.out.println("\nServer: wait for packet.");
 			
 			receiveFromClient(receiveSocket, receivePacket); 
-			clientAddress = receivePacket.getAddress();
 			
 			
 			if(verbose) {
@@ -52,71 +49,24 @@ public class TFTPRequestListener extends Thread {
 				System.out.println("Server-packet received");
 			}
 			
-			if (!running) {
+			if (!running) { //break when not running
                 break;
             }
 			
 			try {
-				Thread.sleep(5000);
+				Thread.sleep(5000); //wait for 5 seconds
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 				System.exit(1);
 			}
 
-	        threadNumber++;
-            requestHandler = new TFTPRequestHandler(threadNumber, receivePacket, data, verbose);
+	        threadNumber++; //increase the # of threads
+            requestHandler = new TFTPRequestHandler(threadNumber, receivePacket, data, verbose); //pass the info to handler
             requestHandler.start();
-            
-		
-            /*
-			byte opCode = -1;
-			byte blockNum = -1;
-			byte[] msg = new byte[DATA_SIZE];
-			
-			String r = "Null";
-			
-			if(data[1] == 1) { //RRQ
-				blockNum = 0;
-				opCode = 3;
-				r = "Server is here.";
-				byte[] rn = r.getBytes();
-				
-				System.arraycopy(rn, 0, msg, 4, rn.length);
-				
-				msg[1] = opCode;
-				msg[3] = blockNum;
-			} else if(data[1] == 2) { //WRQ
-				blockNum = 0;
-				opCode = 4;
-				
-				msg[0] = 0;
-				msg[1] = opCode;
-				msg[2]= 0;
-				msg[3] = blockNum;
-			}
-			
-			
-			try {
-				sendPacket = new DatagramPacket(msg, msg.length, 
-						InetAddress.getLocalHost(), receivePacket.getPort());
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-				System.exit(1);
-			}
-		
-			if(verbose)
-				printPacketInfo(true, sendPacket);
-			
-			sendToClient(sendSocket, sendPacket);
-			System.out.println("Count3");
-			
-			if(verbose)
-				System.out.println("Server-packet sent");
-			*/
 	    }
 	}
 	
-	public static void receiveFromClient(DatagramSocket socket, DatagramPacket packet) {
+	public static void receiveFromClient(DatagramSocket socket, DatagramPacket packet) { //receive packet
 		try {
 			socket.receive(packet);
 		} catch(IOException e) {
@@ -125,7 +75,7 @@ public class TFTPRequestListener extends Thread {
 		}
 	}
 	
-	public static void sendToClient(DatagramSocket socket, DatagramPacket packet) {
+	public static void sendToClient(DatagramSocket socket, DatagramPacket packet) { //send packet
 		try {
 		   socket.send(packet);
 		} catch (IOException e) {
@@ -134,7 +84,7 @@ public class TFTPRequestListener extends Thread {
 		}
 	}
 	
-	public static void printPacketInfo(boolean isSend, DatagramPacket packet) {
+	public static void printPacketInfo(boolean isSend, DatagramPacket packet) { //print packet information
 		if(isSend){
 			System.out.println("\nServer-Sending packet");
 			System.out.println("To Host: " + packet.getAddress());
@@ -143,6 +93,7 @@ public class TFTPRequestListener extends Thread {
 			System.out.println("From Host: " + packet.getAddress());
 		}
 		
+		//opcode
 		if(packet.getData()[1] == 1){
 			System.out.println("Type: RRQ");
 		} else if(packet.getData()[1] == 2){
@@ -159,7 +110,7 @@ public class TFTPRequestListener extends Thread {
 		System.out.println("Port: " + packet.getPort());
 		System.out.println("Length: " + packet.getLength());
 		
-		if(packet.getData()[1] == 1 || packet.getData()[1] == 2){
+		if(packet.getData()[1] == 1 || packet.getData()[1] == 2){ //RRQ or WRQ
 			System.out.print("Filename: ");
 			int i = 2;
 			byte fName[] = new byte[packet.getLength()];
@@ -180,7 +131,7 @@ public class TFTPRequestListener extends Thread {
 			System.out.println(new String(mode));
 		}
 		
-		if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){
+		if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){ //DATA or ACK
 			System.out.print("Packet Number: ");
 			System.out.println((((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF));
 		}
@@ -190,7 +141,7 @@ public class TFTPRequestListener extends Thread {
 		}
 	}
 	
-	public void toggleVerbosity() {
+	public void toggleVerbosity() { //change display complexity
 		verbose = (!verbose);
 		if(verbose) {
 			System.out.println("VERBOSE_ON");
@@ -199,10 +150,6 @@ public class TFTPRequestListener extends Thread {
 		}
 	}
 
-	public static boolean isVerbose() {
-		return verbose;
-	}
-	
 	public void killThread() {
         running = false;
         receiveSocket.close();

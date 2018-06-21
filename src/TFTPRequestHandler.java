@@ -3,28 +3,31 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 
 public class TFTPRequestHandler extends Thread {
-	private static boolean verbose = true;
+	private static boolean verbose = true; //display complexity
 	
-	private static final int DATA_SIZE = 516;
+	private static final int DATA_SIZE = 516; //data size
 	
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket sendSocket;
-	private int threadNumber;
+	private int threadNumber; //total # of threads (passed from TFTPRequestListener)
 	private byte[] data;
-	private InetAddress cAdd;
+	
+	private static InetAddress cAdd; //address of the client
+	private static int cPort;		 //port of the client
 	
 	public TFTPRequestHandler(int threadNum, DatagramPacket packet, byte[] received, boolean verb) {
 		threadNumber = threadNum;
 		receivePacket = packet;
 		data = received;
 		verbose = verb;
+		
+		cAdd = receivePacket.getAddress(); //get the address of the client
+		cPort = receivePacket.getPort(); //get the port of the client
 	}
 
 	public void run() {
-		cAdd = receivePacket.getAddress();
 		
 		try {
 			sendSocket = new DatagramSocket();
@@ -64,7 +67,7 @@ public class TFTPRequestHandler extends Thread {
 		
 			
 		sendPacket = new DatagramPacket(msg, msg.length, 
-				cAdd, receivePacket.getPort());
+				cAdd, cPort);
 		
 		
 		if(verbose)

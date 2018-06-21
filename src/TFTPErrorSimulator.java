@@ -6,22 +6,22 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 
 public class TFTPErrorSimulator {
-	private static final int CLIENT_PORT = 23;
-	private static final int SERVER_PORT = 69;
+	private static final int CLIENT_PORT = 23; //default port to the client
+	private static final int SERVER_PORT = 69; //default port to connect the server
 	
 	private static boolean verbose = true;
 	
-	private int cPort;
-	private int sPort;
-	private InetAddress cAdd;
-	private InetAddress sAdd;
+	private int cPort; 		  //port of the client
+	private int sPort = -1;   // port of the server, -1 only before initialized
+	private InetAddress cAdd; //address of the client
+	private InetAddress sAdd; //address of the server
 	
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket clientSocket, serverSocket;
 	
-	private static TFTPErrorSimulator instance = null;
+	private static TFTPErrorSimulator instance = null; //has an instance or not
 	
-	private static final int DATA_SIZE = 516;
+	private static final int DATA_SIZE = 516; //max data size (in bytes)
 	
 	public TFTPErrorSimulator() {
 		try {
@@ -33,62 +33,18 @@ public class TFTPErrorSimulator {
 		}
 	}
 	
-	public static TFTPErrorSimulator instanceOf() {
+	public static TFTPErrorSimulator instanceOf() { //initialize an instance
 		if(instance == null) {
 			instance = new TFTPErrorSimulator();
 		}
 		return instance;
 	}
 	
-	public void intermediate() throws UnknownHostException {
+	public void intermediate() throws UnknownHostException { //transfer packet between server and client
 		
 		System.out.println("\nError Simulator is ready.");
 		byte[] data;
-		
-
-		try {
-			sAdd= InetAddress.getLocalHost();
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-		System.out.println("\nError Simulator is working.");
-		
-		data = new byte[DATA_SIZE];
-		receivePacket = new DatagramPacket(data, DATA_SIZE);
-		
-		if (verbose)
-			System.out.println("\nSimulator is waiting for packet.");
-		
-		toReceivePacket(clientSocket, receivePacket);
-		if (verbose)
-			printPacketInfo(false,receivePacket);
-		
-		cPort = receivePacket.getPort();
-		cAdd = receivePacket.getAddress();
-		
-		sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), sAdd, SERVER_PORT);
-		
-		toSendPacket(serverSocket, sendPacket);
-		if (verbose)
-			printPacketInfo(true,sendPacket);
-		
-		data = new byte[DATA_SIZE];
-		receivePacket = new DatagramPacket(data, DATA_SIZE);
-	
-		if (verbose)
-			System.out.println("\nSimulator is waiting for packet.");
-			
-		toReceivePacket(serverSocket, receivePacket);
-		if (verbose)
-			printPacketInfo(false,receivePacket);
-			
-		sPort = receivePacket.getPort();
-		
-		sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), cAdd, cPort);
-		
-		toSendPacket(clientSocket, sendPacket);
-		if (verbose)
-			printPacketInfo(true,sendPacket);
+		sAdd = InetAddress.getLocalHost(); //default server address in the local host (this computer)
 		
 		while(true) {
 			data = new byte[DATA_SIZE];
@@ -102,21 +58,43 @@ public class TFTPErrorSimulator {
 			if (verbose)
 				printPacketInfo(false, receivePacket);
 			
-			sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), sAdd, sPort);
+			cAdd = receivePacket.getAddress(); //get the address of the client
+			cPort = receivePacket.getPort();   //get the port of the client
 			
-			toSendPacket(serverSocket, sendPacket);
-			if (verbose)
-				printPacketInfo(true,sendPacket);
-			
-			data = new byte[DATA_SIZE];
-			if (verbose)
-				System.out.println("\nSimulator is waiting for packet.");
-			
-			receivePacket = new DatagramPacket(data, DATA_SIZE);
+			if (receivePacket.getData()[1] == 1 || receivePacket.getData()[1] == 2) { //RRQ or WRQ
+				sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), sAdd, 69);
+				toSendPacket(serverSocket, sendPacket);
+				if (verbose)
+					printPacketInfo(true,sendPacket);
+				
+				data = new byte[DATA_SIZE];
+				if (verbose)
+					System.out.println("\nSimulator is waiting for packet.");
+				
+				receivePacket = new DatagramPacket(data, DATA_SIZE);
+						
+				toReceivePacket(serverSocket, receivePacket);
+				if (verbose)
+					printPacketInfo(false,receivePacket);
+				sPort = receivePacket.getPort(); //to get the port of the server
+			} else { //DATA or ACK or ERROR
+				if(sPort > 0) {
+					sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), sAdd, sPort);
+					toSendPacket(serverSocket, sendPacket);
+					if (verbose)
+						printPacketInfo(true,sendPacket);
 					
-			toReceivePacket(serverSocket, receivePacket);
-			if (verbose)
-				printPacketInfo(false,receivePacket);
+					data = new byte[DATA_SIZE];
+					if (verbose)
+						System.out.println("\nSimulator is waiting for packet.");
+					
+					receivePacket = new DatagramPacket(data, DATA_SIZE);
+							
+					toReceivePacket(serverSocket, receivePacket);
+					if (verbose)
+						printPacketInfo(false,receivePacket);
+				}
+			}
 				
 			sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), cAdd, cPort);
 					
@@ -126,7 +104,7 @@ public class TFTPErrorSimulator {
 		}
 	}
 	
-	public static void toReceivePacket(DatagramSocket socket, DatagramPacket packet) {
+	public static void toReceivePacket(DatagramSocket socket, DatagramPacket packet) { //receive packet
 		try {
 			socket.receive(packet);
 		} catch(IOException e) {
@@ -135,7 +113,7 @@ public class TFTPErrorSimulator {
 		}
 	}
 	
-	public static void toSendPacket(DatagramSocket socket, DatagramPacket packet) {
+	public static void toSendPacket(DatagramSocket socket, DatagramPacket packet) { //send packet
 		try {
 		   socket.send(packet);
 		} catch (IOException e) {
@@ -144,7 +122,7 @@ public class TFTPErrorSimulator {
 		}
 	}
 	
-	public static void printPacketInfo(boolean isSend, DatagramPacket packet) {
+	public static void printPacketInfo(boolean isSend, DatagramPacket packet) { //print packet information
 		if(isSend){
 			System.out.println("\nError Simulator-Sending packet");
 			System.out.println("To Host: " + packet.getAddress());
@@ -153,6 +131,7 @@ public class TFTPErrorSimulator {
 			System.out.println("From Host: " + packet.getAddress());
 		}
 		
+		//opcode
 		if(packet.getData()[1] == 1){
 			System.out.println("Type: RRQ");
 		} else if(packet.getData()[1] == 2){
@@ -169,7 +148,7 @@ public class TFTPErrorSimulator {
 		System.out.println("Port: " + packet.getPort());
 		System.out.println("Length: " + packet.getLength());
 		
-		if(packet.getData()[1] == 1 || packet.getData()[1] == 2){
+		if(packet.getData()[1] == 1 || packet.getData()[1] == 2){ //RRQ or WRQ
 			System.out.print("Filename: ");
 			int i = 2;
 			byte fName[] = new byte[packet.getLength()];
@@ -190,12 +169,12 @@ public class TFTPErrorSimulator {
 			System.out.println(new String(mode));
 		}
 		
-		if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){
+		if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){ //DATA or ACK
 			System.out.print("Packet Number: ");
 			System.out.println((((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF));
 		}
 		
-		if(packet.getData()[1] == 3){
+		if(packet.getData()[1] == 3){ //show data size
 			System.out.println("Size of data(in byte): " + (packet.getLength()-4));
 		}
 	}

@@ -11,11 +11,14 @@ public class TFTPClient{
 	   private static DatagramPacket sendPacket, receivePacket;
 	   private static DatagramSocket sendReceiveSocket;
 	   
-	   private static final int CLIENT_PORT = 23;
+	   private static final int CLIENT_PORT = 23; //default port to the error simulator
+	   private static final int SERVER_PORT = 69; //default port to connect the server
 		
-	   private static final int DATA_SIZE = 516;
+	   private static final int DATA_SIZE = 516; //data size (in bytes)
 	   
-	   private static boolean verbose = true;
+	   private static boolean verbose = true; //display complexity
+	   private static boolean testMode = true; //testMode
+	   private static int destPort = CLIENT_PORT; //the port of sendPacket 
 	
 	   public TFTPClient() {
 		   try {
@@ -25,7 +28,7 @@ public class TFTPClient{
 			   System.exit(1);
 		   }
 	   }
-	   
+
 	@SuppressWarnings("resource")
 	public void TFTPSendAndReceive() {
 		   
@@ -34,30 +37,35 @@ public class TFTPClient{
 
 		   Scanner scanner = new Scanner(System.in);
 		   
-		   
 		   byte opCode = -1;
 		   
 		   while(true) {
 			   System.out.print("#- ");
 			   String cmd = scanner.nextLine().toLowerCase();
-			   if(cmd.equals("read") || cmd.equals("get")){
+			   if(cmd.equals("read") || cmd.equals("get")){ //RRQ
 				   opCode = 1;
 				   request(opCode, s);
-			   } else if (cmd.equals("write") || cmd.equals("send")){
+			   } else if (cmd.equals("write") || cmd.equals("send")){ //WRQ
 				   opCode = 2;
 				   request(opCode, s);
-			   } else if (cmd.equals("quit") || cmd.equals("exit")) {
+			   } else if (cmd.equals("quit") || cmd.equals("exit")) { //terminate the client
 				   System.out.println("Terminating client");
 				   sendReceiveSocket.close();
 				   scanner.close();
 			       return;
-			   } else if (cmd.equals("help")) {
+			   } else if (cmd.equals("mode")) { //change the mode of TFTP
+				   testMode = !testMode;
+				   if(testMode) {
+					   System.out.println("Current mode is test mode. ");
+				   } else {
+					   System.out.println("Current mode is normal mode. ");
+				   }
+			   } else if (cmd.equals("help")) { //get a help menu
 				   helpMenu();
-			   } else if (cmd.equals("verbose")) {
+			   } else if (cmd.equals("verbose")) { //change the display complexity
 				   toggleVerbosity();
-			   } else if (cmd.length() == 0) {
-				   //pass
-			   } else {
+			   } else if (cmd.length() == 0) { //empty
+			   } else { //invalid command
 				   System.out.println("Invalid command");
 				   continue;
 			   }
@@ -80,12 +88,17 @@ public class TFTPClient{
 		   System.arraycopy(md, 0, msg, fn.length + 3, md.length);
 		   int len = (fn.length + md.length) + 4;
 		   msg[len - 1] = 0; // fn.length + 4 - 1 -> last digit
-		   msg[0] = opCode;
 		   msg[1] = opCode;
+		   
+		   if(testMode) {
+			   destPort = CLIENT_PORT;
+		   } else {
+			   destPort = SERVER_PORT;
+		   }
 		   
 		   try {
 			   sendPacket = new DatagramPacket(msg, msg.length, 
-					   InetAddress.getLocalHost(), CLIENT_PORT);
+					   InetAddress.getLocalHost(), destPort);
 		   } catch (UnknownHostException e) {
 			   e.printStackTrace();
 			   System.exit(1);
@@ -106,11 +119,11 @@ public class TFTPClient{
 		   
 		   if (verbose) {
 			   printPacketInfo(false, receivePacket);
-			   System.out.println("Client-packet received.\n");
+			   System.out.println("Client-Receiving packet.\n");
 		   }
 	   }
 	   
-	   public static void sendToServer(DatagramSocket socket, DatagramPacket packet) {
+	   public static void sendToServer(DatagramSocket socket, DatagramPacket packet) { //send packet
 		   try {
 			   socket.send(packet);
 		   } catch (IOException e) {
@@ -119,7 +132,7 @@ public class TFTPClient{
 		   }
 	   }
 	   
-	   public static void receiveFromServer(DatagramSocket socket, DatagramPacket packet) {
+	   public static void receiveFromServer(DatagramSocket socket, DatagramPacket packet) { //receive packet
 		   try {
 				socket.receive(packet);
 			} catch(IOException e) {
@@ -128,7 +141,7 @@ public class TFTPClient{
 			}
 	   }
 	   
-	   public static void printPacketInfo(boolean isSend, DatagramPacket packet) {
+	   public static void printPacketInfo(boolean isSend, DatagramPacket packet) { //print packet information
 			if(isSend){
 				System.out.println("\nClient-Sending packet");
 				System.out.println("To Host: " + packet.getAddress());
@@ -137,6 +150,7 @@ public class TFTPClient{
 				System.out.println("From Host: " + packet.getAddress());
 			}
 			
+			//opcode
 			if(packet.getData()[1] == 1){
 				System.out.println("Type: RRQ");
 			} else if(packet.getData()[1] == 2){
@@ -153,7 +167,7 @@ public class TFTPClient{
 			System.out.println("Port: " + packet.getPort());
 			System.out.println("Length: " + packet.getLength());
 			
-			if(packet.getData()[1] == 1 || packet.getData()[1] == 2){
+			if(packet.getData()[1] == 1 || packet.getData()[1] == 2){ //RRQ or WRQ
 				System.out.print("Filename: ");
 				int i = 2;
 				byte fName[] = new byte[packet.getLength()];
@@ -174,25 +188,26 @@ public class TFTPClient{
 				System.out.println(new String(mode));
 			}
 			
-			if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){
+			if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){ //DATA or ACK
 				System.out.print("Packet Number: ");
 				System.out.println((((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF));
 			}
 			
-			if(packet.getData()[1] == 3){
+			if(packet.getData()[1] == 3){ //show data size
 				System.out.println("Size of data(in byte): " + (packet.getLength()-4));
 			}
 		}
 	   
-	   public static void helpMenu() {
-		   System.out.println("		read/get - get a file to server" + "\n"
-		   					+ "	  write/send - send a file to server" + "\n"
-		   					+ "	    man/help - print this menu" + "\n"
-		   					+ "		 verbose - change the complexity of display" + "\n"
-				   			+ "	   exit/quit - exit the client" + "\n");
+	   public static void helpMenu() { //all commands
+		   System.out.println("		read/get - get a file to server\n"
+		   					+ "	  write/send - send a file to server\n"
+		   					+ "	    man/help - print this menu\n"
+		   					+ "		 verbose - change the complexity of display\n"
+		   					+ "			mode - change the mode of TFTP\n"
+				   			+ "	   exit/quit - exit the client\n");
 	   }
 
-	   public void toggleVerbosity() {
+	   public void toggleVerbosity() { //change display complexity
 		   verbose = (!verbose);
 		   if(verbose) {
 			   System.out.println("VERBOSE_ON");
