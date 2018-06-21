@@ -53,12 +53,18 @@ public class TFTPClient{
 				   sendReceiveSocket.close();
 				   scanner.close();
 			       return;
-			   } else if (cmd.equals("mode")) { //change the mode of TFTP
-				   testMode = !testMode;
+			   } else if (cmd.equals("mode")) { //current mode of TFTP
 				   if(testMode) {
 					   System.out.println("Current mode is test mode. ");
 				   } else {
 					   System.out.println("Current mode is normal mode. ");
+				   }
+			   } else if (cmd.equals("switch")) { //change the mode of TFTP
+				   testMode = !testMode;
+				   if(testMode) {
+					   System.out.println("Change the mode into test mode. ");
+				   } else {
+					   System.out.println("Change the mode into normal mode. ");
 				   }
 			   } else if (cmd.equals("help")) { //get a help menu
 				   helpMenu();
