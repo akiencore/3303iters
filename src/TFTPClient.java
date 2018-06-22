@@ -1,4 +1,3 @@
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -19,6 +18,8 @@ public class TFTPClient{
 	   private static boolean verbose = true; //display complexity
 	   private static boolean testMode = true; //testMode
 	   private static int destPort = CLIENT_PORT; //the port of sendPacket 
+	   
+	   private String userFolder = System.getProperty("user.dir") + "user_files"; //the directory of folder
 	
 	   public TFTPClient() {
 		   try {
@@ -32,8 +33,7 @@ public class TFTPClient{
 	@SuppressWarnings("resource")
 	public void TFTPSendAndReceive() {
 		   
-		   String s = "Anyone there?";
-		   System.out.println("Client: sending a packet containing:\n" + s);
+		   System.out.println("Client: sending a packet containing:\n");
 
 		   Scanner scanner = new Scanner(System.in);
 		   
@@ -41,36 +41,44 @@ public class TFTPClient{
 		   
 		   while(true) {
 			   System.out.print("#- ");
-			   String cmd = scanner.nextLine().toLowerCase();
-			   if(cmd.equals("read") || cmd.equals("get")){ //RRQ
-				   opCode = 1;
-				   request(opCode, s);
-			   } else if (cmd.equals("write") || cmd.equals("send")){ //WRQ
-				   opCode = 2;
-				   request(opCode, s);
-			   } else if (cmd.equals("quit") || cmd.equals("exit")) { //terminate the client
+			   String[] cmd = scanner.nextLine().toLowerCase().split("\\s+");
+			   if(cmd[0].equals("read") || cmd[0].equals("get")){ //RRQ
+				   	if (cmd.length != 2) //ensure the filename is ready
+				   		System.out.println("No available filename");
+				   	else {
+				   		opCode = 1;
+				   		request(opCode, cmd[1]); //passing filename
+				   	}
+			   } else if (cmd[0].equals("write") || cmd[0].equals("send")){ //WRQ
+				   if (cmd.length != 2)
+				   		System.out.println("No available filename");
+				   	else {
+				   		opCode = 2;
+				   		request(opCode, cmd[1]);
+				   	}
+			   } else if (cmd[0].equals("quit") || cmd[0].equals("exit")) { //terminate the client
 				   System.out.println("Terminating client");
 				   sendReceiveSocket.close();
 				   scanner.close();
 			       return;
-			   } else if (cmd.equals("mode")) { //current mode of TFTP
+			   } else if (cmd[0].equals("mode")) { //current mode of TFTP
 				   if(testMode) {
 					   System.out.println("Current mode is test mode. ");
 				   } else {
 					   System.out.println("Current mode is normal mode. ");
 				   }
-			   } else if (cmd.equals("switch")) { //change the mode of TFTP
+			   } else if (cmd[0].equals("switch")) { //change the mode of TFTP
 				   testMode = !testMode;
 				   if(testMode) {
 					   System.out.println("Change the mode into test mode. ");
 				   } else {
 					   System.out.println("Change the mode into normal mode. ");
 				   }
-			   } else if (cmd.equals("help")) { //get a help menu
+			   } else if (cmd[0].equals("help")) { //get a help menu
 				   helpMenu();
-			   } else if (cmd.equals("verbose")) { //change the display complexity
+			   } else if (cmd[0].equals("verbose")) { //change the display complexity
 				   toggleVerbosity();
-			   } else if (cmd.length() == 0) { //empty
+			   } else if (cmd.length == 0 || cmd[0].length() == 0) { //empty
 			   } else { //invalid command
 				   System.out.println("Invalid command");
 				   continue;
@@ -78,11 +86,10 @@ public class TFTPClient{
 		   }
 	   }
 	   
-	   public static void request(byte opCode, String s) {
+	   public static void request(byte opCode, String filename) {
 		   byte[] fn, md;
-		   String filename, mode; 
+		   String mode; 
 		   
-		   filename = s;
 		   fn = filename.getBytes();
 		   
 		   mode = "octet";
@@ -111,9 +118,9 @@ public class TFTPClient{
 		   }
 		   
 		   if (verbose)
-			   printPacketInfo(true, sendPacket);
+			   TFTPTools.printPacketInfo(true, sendPacket);
 		   
-		   sendToServer(sendReceiveSocket, sendPacket);
+		   TFTPTools.toSendPacket(sendReceiveSocket, sendPacket);
 		   
 		   if (verbose)
 			   System.out.println("Client-packet sent.\n");
@@ -121,88 +128,13 @@ public class TFTPClient{
 		   byte[] data = new byte[DATA_SIZE];
 		   receivePacket = new DatagramPacket(data, data.length);
 		   
-		   receiveFromServer(sendReceiveSocket, receivePacket);
+		   TFTPTools.toReceivePacket(sendReceiveSocket, receivePacket);
 		   
 		   if (verbose) {
-			   printPacketInfo(false, receivePacket);
+			   TFTPTools.printPacketInfo(false, receivePacket);
 			   System.out.println("Client-Receiving packet.\n");
 		   }
 	   }
-	   
-	   public static void sendToServer(DatagramSocket socket, DatagramPacket packet) { //send packet
-		   try {
-			   socket.send(packet);
-		   } catch (IOException e) {
-			   e.printStackTrace();
-			   System.exit(1);
-		   }
-	   }
-	   
-	   public static void receiveFromServer(DatagramSocket socket, DatagramPacket packet) { //receive packet
-		   try {
-				socket.receive(packet);
-			} catch(IOException e) {
-				e.printStackTrace();
-				System.exit(1);
-			}
-	   }
-	   
-	   public static void printPacketInfo(boolean isSend, DatagramPacket packet) { //print packet information
-			if(isSend){
-				System.out.println("\nClient-Sending packet");
-				System.out.println("To Host: " + packet.getAddress());
-			} else {
-				System.out.println("\nClient-Receiving packet");
-				System.out.println("From Host: " + packet.getAddress());
-			}
-			
-			//opcode
-			if(packet.getData()[1] == 1){
-				System.out.println("Type: RRQ");
-			} else if(packet.getData()[1] == 2){
-				System.out.println("Type: WRQ");
-			} else if(packet.getData()[1] == 3){
-				System.out.println("Type: DATA");
-			} else if(packet.getData()[1] == 4){
-				System.out.println("Type: ACK");
-			} else {
-				System.out.println("Packet type is undefined");
-			}
-			
-
-			System.out.println("Port: " + packet.getPort());
-			System.out.println("Length: " + packet.getLength());
-			
-			if(packet.getData()[1] == 1 || packet.getData()[1] == 2){ //RRQ or WRQ
-				System.out.print("Filename: ");
-				int i = 2;
-				byte fName[] = new byte[packet.getLength()];
-				byte mode[] = new byte[packet.getLength()];
-				while(packet.getData()[i] != 0){
-					fName[i-2] = packet.getData()[i];
-					i++;
-				}
-				System.out.println(new String(fName));
-				System.out.print("Mode: ");
-				i++;
-				int j = 0;
-				while(packet.getData()[i] != 0){
-					mode[j] = packet.getData()[i];
-					i++;
-					j++;
-				}
-				System.out.println(new String(mode));
-			}
-			
-			if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){ //DATA or ACK
-				System.out.print("Packet Number: ");
-				System.out.println((((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF));
-			}
-			
-			if(packet.getData()[1] == 3){ //show data size
-				System.out.println("Size of data(in byte): " + (packet.getLength()-4));
-			}
-		}
 	   
 	   public static void helpMenu() { //all commands
 		   System.out.println("		read/get - get a file to server\n"

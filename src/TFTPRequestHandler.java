@@ -71,30 +71,12 @@ public class TFTPRequestHandler extends Thread {
 		
 		
 		if(verbose)
-			TFTPServer.printPacketInfo(true, sendPacket);
+			TFTPTools.printPacketInfo(true, sendPacket);
 			
-		sendToClient(sendSocket, sendPacket);
+		TFTPTools.toSendPacket(sendSocket, sendPacket);
 		
 		if(verbose)
 			System.out.println("Server-packet sent");
-	}
-	
-	public static void receiveFromClient(DatagramSocket socket, DatagramPacket packet) {
-		try {
-			socket.receive(packet);
-		} catch(IOException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
-	}
-	
-	public static void sendToClient(DatagramSocket socket, DatagramPacket packet) {
-		try {
-		   socket.send(packet);
-		} catch (IOException e) {
-		   e.printStackTrace();
-		   System.exit(1);
-		}
 	}
 	
 	public void toggleVerbosity() {
