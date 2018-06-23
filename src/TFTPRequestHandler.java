@@ -39,15 +39,49 @@ public class TFTPRequestHandler extends Thread {
 		if (verbose)
 			System.out.println("Total processing thread number: " + threadNumber + ". ");
 		
+		//not used in iter 1, but will be in 2 and later
+		int error_code = -1;
+		String errorMsg = "";
+		
+		//check opcode
 		byte opCode = -1;
 		byte blockNum = -1;
 		byte[] msg = new byte[DATA_SIZE];
+		
+		if(data[1] == 1 || data[1] == 2) {
+			//pass
+		} else {
+			error_code = 4;
+			errorMsg = "Invalid opcode";
+		}
+		
+		//check mode
+		String mode = "";
+		int j = 0, k = 0;
+		//get two "0"s before and after "mode" bytes
+		for (j = 2; j < receivePacket.getLength(); j++) {
+			if (data[j] == 0) { break; }
+		}
+
+		for(k = j+1; k < receivePacket.getLength(); k++) {
+			if (data[k] == 0) { break; }
+		}
+
+		mode = new String(data, j + 1, k - j - 1);
+		
+		if(mode.equals("netascii") || mode.equals("octet")) {
+			//pass
+		} else {
+			error_code = 4;
+			errorMsg = "Invalid mode";
+		}
+		
 		
 		String r = "Null";
 		
 		if(data[1] == 1) { //RRQ
 			blockNum = 0;
-			opCode = 3;
+			opCode = 3; //DATA
 			r = "Server is here.";
 			byte[] rn = r.getBytes();
 			
@@ -57,7 +91,7 @@ public class TFTPRequestHandler extends Thread {
 			msg[3] = blockNum;
 		} else if(data[1] == 2) { //WRQ
 			blockNum = 0;
-			opCode = 4;
+			opCode = 4; //ACK
 			
 			msg[0] = 0;
 			msg[1] = opCode;

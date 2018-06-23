@@ -1,7 +1,4 @@
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.io.File;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
@@ -10,7 +7,8 @@ public class TFTPServer {
 
 	private static TFTPServer instance = null; //has an instance or not
 	
-	private String serverFolder = System.getProperty("user.dir") + "server_files"; //the directory of folder
+	private String serverFolder = System.getProperty("user.dir") + File.separator 
+			+ "server_files" + File.separator; //the directory of folder
 	
 	private static boolean verbose = true; //display complexity
 	

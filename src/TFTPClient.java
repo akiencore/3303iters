@@ -1,3 +1,5 @@
+import java.io.File;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -19,7 +21,8 @@ public class TFTPClient{
 	   private static boolean testMode = true; //testMode
 	   private static int destPort = CLIENT_PORT; //the port of sendPacket 
 	   
-	   private String userFolder = System.getProperty("user.dir") + "user_files"; //the directory of folder
+	   private static String userFolder = System.getProperty("user.dir") + File.separator 
+			   + "user_files" + File.separator; //the directory of folder
 	
 	   public TFTPClient() {
 		   try {
@@ -31,7 +34,7 @@ public class TFTPClient{
 	   }
 
 	@SuppressWarnings("resource")
-	public void TFTPSendAndReceive() {
+	public void TFTPSendAndReceive() throws IOException {
 		   
 		   System.out.println("Client: sending a packet containing:\n");
 
@@ -41,42 +44,42 @@ public class TFTPClient{
 		   
 		   while(true) {
 			   System.out.print("#- ");
-			   String[] cmd = scanner.nextLine().toLowerCase().split("\\s+");
-			   if(cmd[0].equals("read") || cmd[0].equals("get")){ //RRQ
+			   String[] cmd = scanner.nextLine().split("\\s+");
+			   if(cmd[0].toLowerCase().equals("read") || cmd[0].toLowerCase().equals("get")){ //RRQ
 				   	if (cmd.length != 2) //ensure the filename is ready
-				   		System.out.println("No available filename");
+				   		System.out.println("No available file in this name");
 				   	else {
 				   		opCode = 1;
 				   		request(opCode, cmd[1]); //passing filename
 				   	}
-			   } else if (cmd[0].equals("write") || cmd[0].equals("send")){ //WRQ
-				   if (cmd.length != 2)
-				   		System.out.println("No available filename");
+			   } else if (cmd[0].toLowerCase().equals("write") || cmd[0].toLowerCase().equals("send")){ //WRQ
+				   if (cmd.length != 2) //ensure the filename is ready
+				   		System.out.println("No available file in this name");
 				   	else {
 				   		opCode = 2;
-				   		request(opCode, cmd[1]);
+				   		request(opCode, cmd[1]); //passing filename
 				   	}
-			   } else if (cmd[0].equals("quit") || cmd[0].equals("exit")) { //terminate the client
+			   } else if (cmd[0].toLowerCase().equals("quit") || cmd[0].toLowerCase().equals("exit")) { //terminate the client
 				   System.out.println("Terminating client");
 				   sendReceiveSocket.close();
 				   scanner.close();
 			       return;
-			   } else if (cmd[0].equals("mode")) { //current mode of TFTP
+			   } else if (cmd[0].toLowerCase().equals("mode")) { //current mode of TFTP
 				   if(testMode) {
 					   System.out.println("Current mode is test mode. ");
 				   } else {
 					   System.out.println("Current mode is normal mode. ");
 				   }
-			   } else if (cmd[0].equals("switch")) { //change the mode of TFTP
+			   } else if (cmd[0].toLowerCase().equals("switch")) { //change the mode of TFTP
 				   testMode = !testMode;
 				   if(testMode) {
 					   System.out.println("Change the mode into test mode. ");
 				   } else {
 					   System.out.println("Change the mode into normal mode. ");
 				   }
-			   } else if (cmd[0].equals("help")) { //get a help menu
+			   } else if (cmd[0].toLowerCase().equals("help")) { //get a help menu
 				   helpMenu();
-			   } else if (cmd[0].equals("verbose")) { //change the display complexity
+			   } else if (cmd[0].toLowerCase().equals("verbose")) { //change the display complexity
 				   toggleVerbosity();
 			   } else if (cmd.length == 0 || cmd[0].length() == 0) { //empty
 			   } else { //invalid command
@@ -86,9 +89,25 @@ public class TFTPClient{
 		   }
 	   }
 	   
-	   public static void request(byte opCode, String filename) {
+	   public static void request(byte opCode, String filename) throws IOException {
 		   byte[] fn, md;
 		   String mode; 
+		   File file = null;
+		   
+		   String filePath = getFilePath(filename);
+				
+		   file = new File(filePath);
+		   if (file.exists() && !file.canWrite()) {
+			   System.out.println("File already exists or cannot be overwritten. Please try again.\n");
+			   return;
+		   } else if (!file.exists()) {
+			   if (!file.createNewFile()) {
+				   System.out.println("Failed to create " + filename + ".\n");
+				   return;
+			   } else {
+				   //pass
+			   }
+		   }
 		   
 		   fn = filename.getBytes();
 		   
@@ -125,6 +144,10 @@ public class TFTPClient{
 		   if (verbose)
 			   System.out.println("Client-packet sent.\n");
 		   
+		   
+		   //here for receiving later
+		   
+		   
 		   byte[] data = new byte[DATA_SIZE];
 		   receivePacket = new DatagramPacket(data, data.length);
 		   
@@ -134,6 +157,10 @@ public class TFTPClient{
 			   TFTPTools.printPacketInfo(false, receivePacket);
 			   System.out.println("Client-Receiving packet.\n");
 		   }
+	   }
+		   
+	   private static String getFilePath(String filename) {
+		   return userFolder + filename;
 	   }
 	   
 	   public static void helpMenu() { //all commands
@@ -154,7 +181,7 @@ public class TFTPClient{
 		   }
 	   }
 	   
-	   public static void main(String[] args) {
+	   public static void main(String[] args) throws IOException {
 		   TFTPClient client = new TFTPClient();
 		   client.TFTPSendAndReceive();
 	   }
