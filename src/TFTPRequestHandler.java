@@ -1,4 +1,4 @@
-import java.io.IOException;
+import java.io.File;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -48,7 +48,7 @@ public class TFTPRequestHandler extends Thread {
 		byte blockNum = -1;
 		byte[] msg = new byte[DATA_SIZE];
 		
-		if(data[1] == 1 || data[1] == 2) {
+		if(data[1] == 1 || data[1] == 2) { //check opcode
 			//pass
 		} else {
 			error_code = 4;
@@ -57,19 +57,18 @@ public class TFTPRequestHandler extends Thread {
 		
 		//check mode
 		String mode = "";
-		int j = 0, k = 0;
+		int j = 0, k = 0; // indicators
 		//get two "0"s before and after "mode" bytes
-		for (j = 2; j < receivePacket.getLength(); j++) {
-			if (data[j] == 0) { break; }
+		for(j=2; j<receivePacket.getLength(); j++) {
+			if(data[j] == 0) break;
 		}
-
-		for(k = j+1; k < receivePacket.getLength(); k++) {
-			if (data[k] == 0) { break; }
+		for(k=j+1; k<receivePacket.getLength(); k++) {
+			if(data[k] == 0) break;
 		}
 
 		mode = new String(data, j + 1, k - j - 1);
 		
-		if(mode.equals("netascii") || mode.equals("octet")) {
+		if(mode.equals("netascii") || mode.equals("octet")) { //check mode
 			//pass
 		} else {
 			error_code = 4;
@@ -77,7 +76,41 @@ public class TFTPRequestHandler extends Thread {
 		}
 		
 		
-		String r = "Null";
+		int length = receivePacket.getLength();
+		String filename = "";
+		
+		int l=0, m=0;
+		
+		for(l=2;l<length;l++) {
+			if(data[l] == 0) break;
+		}
+		
+		filename = new String(data, 2, l-2);
+		
+		if(data[1] == 1) { //RRQ
+			if(verbose)
+				System.out.println("Get a read request. ");
+		} else if(data[1] == 2) { //WRQ
+			if(verbose)
+				System.out.println("Get a write request");
+		}
+		
+		
+		File file;
+		
+		file = new File(TFTPServer.getDirectory(), filename);
+		
+		if(data[1] == 1) {
+			if(file.exists() && !file.isDirectory()) 
+				sendFile(file, receivePacket.getAddress(), receivePacket.getPort());
+		}
+		else if(data[1] == 2) {
+			if(file.exists() && !file.isDirectory()) 
+				receiveFile(file, receivePacket.getAddress(), receivePacket.getPort());
+		}
+		
+		/*
+		String r = "";
 		
 		if(data[1] == 1) { //RRQ
 			blockNum = 0;
@@ -111,6 +144,15 @@ public class TFTPRequestHandler extends Thread {
 		
 		if(verbose)
 			System.out.println("Server-packet sent");
+		*/
+	}
+	
+	private void receiveFile(int port, InetAddress address, String filename) {
+		byte[] wByte = new byte[] {0, 4, 0, 0}; //ACK
+	}
+	
+	private void sendFile(int port, InetAddress address, String filename) {
+		
 	}
 	
 	public void toggleVerbosity() {

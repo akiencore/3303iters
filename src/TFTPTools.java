@@ -6,7 +6,7 @@ public class TFTPTools {
 	
 	public static void printPacketInfo(boolean isSend, DatagramPacket packet) { //print packet information
 		if(isSend){
-			System.out.println("\nServer-Sending packet");
+			System.out.println("\nServer-sending a packet");
 			System.out.println("To Host: " + packet.getAddress());
 		} else {
 			System.out.println("\nServer-Receiving packet");
@@ -26,7 +26,7 @@ public class TFTPTools {
 			System.out.println("Packet type is undefined");
 		}
 		
-
+		
 		System.out.println("Port: " + packet.getPort());
 		System.out.println("Length: " + packet.getLength());
 		

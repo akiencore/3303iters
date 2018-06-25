@@ -7,7 +7,7 @@ public class TFTPServer {
 
 	private static TFTPServer instance = null; //has an instance or not
 	
-	private String serverFolder = System.getProperty("user.dir") + File.separator 
+	private static String serverFolder = System.getProperty("user.dir") + File.separator 
 			+ "server_files" + File.separator; //the directory of folder
 	
 	private static boolean verbose = true; //display complexity
@@ -62,6 +62,10 @@ public class TFTPServer {
 			System.out.println("VERBOSE_OFF");
 			serverListener.toggleVerbosity();
 		}
+	}
+	
+	public static String getDirectory() {
+		return serverFolder;
 	}
 	
 	public static void main(String[] args) throws UnknownHostException, SocketException {
