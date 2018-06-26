@@ -20,6 +20,7 @@ public class TFTPClient{
 	   private static boolean verbose = true; //display complexity
 	   private static boolean testMode = true; //testMode
 	   private static int destPort = CLIENT_PORT; //the port of sendPacket 
+	   private static String terminal = "Client";
 	   
 	   private static String userFolder = System.getProperty("user.dir") + File.separator 
 			   + "user_files" + File.separator; //the directory of folder
@@ -137,12 +138,12 @@ public class TFTPClient{
 		   }
 		   
 		   if (verbose)
-			   TFTPTools.printPacketInfo(true, sendPacket);
+			   TFTPTools.printPacketInfo(terminal, true, sendPacket);
 		   
 		   TFTPTools.toSendPacket(sendReceiveSocket, sendPacket);
 		   
 		   if (verbose)
-			   System.out.println("Client-packet sent.\n");
+			   System.out.println("\nClient: waiting for packet.");
 		   
 		   
 		   //here for receiving later
@@ -153,10 +154,8 @@ public class TFTPClient{
 		   
 		   TFTPTools.toReceivePacket(sendReceiveSocket, receivePacket);
 		   
-		   if (verbose) {
-			   TFTPTools.printPacketInfo(false, receivePacket);
-			   System.out.println("Client-Receiving packet.\n");
-		   }
+		   if (verbose)
+			   TFTPTools.printPacketInfo(terminal, false, receivePacket);
 	   }
 		   
 	   private static String getFilePath(String filename) {

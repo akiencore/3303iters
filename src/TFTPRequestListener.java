@@ -14,6 +14,8 @@ public class TFTPRequestListener extends Thread {
 	
 	private static boolean running = false; //is the listener running
     private static int threadNumber; //total # of threads
+    
+    private static String terminal = "Server";
 
     TFTPRequestHandler requestHandler = null; //instance of the requestHandler
 
@@ -37,14 +39,13 @@ public class TFTPRequestListener extends Thread {
 			receivePacket = new DatagramPacket(data, DATA_SIZE);
 			                                                        
 			if (verbose)
-				System.out.println("\nServer: wait for packet.");
+				System.out.println("\nServer: waiting for packet.");
 			
 			TFTPTools.toReceivePacket(receiveSocket, receivePacket); 
 			
 			
 			if(verbose) {
-				TFTPTools.printPacketInfo(false, receivePacket);
-				System.out.println("Server-packet received");
+				TFTPTools.printPacketInfo(terminal, false, receivePacket);
 			}
 			
 			if (!running) { //break when not running

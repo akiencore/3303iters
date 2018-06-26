@@ -1,8 +1,13 @@
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.ArrayList;
 
 public class TFTPRequestHandler extends Thread {
 	private static boolean verbose = true; //display complexity
@@ -11,14 +16,19 @@ public class TFTPRequestHandler extends Thread {
 	
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket sendSocket;
-	private int threadNumber; //total # of threads (passed from TFTPRequestListener)
+	private int packetNum;
+	private int threadNum; //total # of threads (passed from TFTPRequestListener)
 	private byte[] data;
 	
 	private static InetAddress cAdd; //address of the client
 	private static int cPort;		 //port of the client
+    
+    private static String terminal = "Server";
+
+	ArrayList<DatagramPacket> list = new ArrayList<DatagramPacket>();
 	
 	public TFTPRequestHandler(int threadNum, DatagramPacket packet, byte[] received, boolean verb) {
-		threadNumber = threadNum;
+		threadNum = threadNum;
 		receivePacket = packet;
 		data = received;
 		verbose = verb;
@@ -29,6 +39,9 @@ public class TFTPRequestHandler extends Thread {
 
 	public void run() {
 		
+
+		list.add(receivePacket);
+		
 		try {
 			sendSocket = new DatagramSocket();
 		} catch (SocketException e) {
@@ -37,7 +50,7 @@ public class TFTPRequestHandler extends Thread {
 		}
 		
 		if (verbose)
-			System.out.println("Total processing thread number: " + threadNumber + ". ");
+			System.out.println("Total processing thread number: " + threadNum + ". ");
 		
 		//not used in iter 1, but will be in 2 and later
 		int error_code = -1;
@@ -54,7 +67,7 @@ public class TFTPRequestHandler extends Thread {
 			error_code = 4;
 			errorMsg = "Invalid opcode";
 		}
-		
+
 		//check mode
 		String mode = "";
 		int j = 0, k = 0; // indicators
@@ -95,64 +108,88 @@ public class TFTPRequestHandler extends Thread {
 				System.out.println("Get a write request");
 		}
 		
-		
 		File file;
 		
 		file = new File(TFTPServer.getDirectory(), filename);
 		
 		if(data[1] == 1) {
 			if(file.exists() && !file.isDirectory()) 
-				sendFile(file, receivePacket.getAddress(), receivePacket.getPort());
+				sendFile(receivePacket.getPort(), receivePacket.getAddress(), filename);
 		}
 		else if(data[1] == 2) {
-			if(file.exists() && !file.isDirectory()) 
-				receiveFile(file, receivePacket.getAddress(), receivePacket.getPort());
+			if(file.exists() && !file.isDirectory())
+				try {
+					receiveFile(receivePacket.getPort(), receivePacket.getAddress(), filename);
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
 		}
+	}
+	
+	private void receiveFile(int port, InetAddress address, String filename) throws IOException {
+		byte[] ack = new byte[] {0, 4, 0, 0}; //ACK
+		sendPacket = new DatagramPacket(ack, 4, address, port);
 		
-		/*
-		String r = "";
-		
-		if(data[1] == 1) { //RRQ
-			blockNum = 0;
-			opCode = 3; //DATA
-			r = "Server is here.";
-			byte[] rn = r.getBytes();
-			
-			System.arraycopy(rn, 0, msg, 4, rn.length);
-				
-			msg[1] = opCode;
-			msg[3] = blockNum;
-		} else if(data[1] == 2) { //WRQ
-			blockNum = 0;
-			opCode = 4; //ACK
-			
-			msg[0] = 0;
-			msg[1] = opCode;
-			msg[2]= 0;
-			msg[3] = blockNum;
-		}
-		
-			
-		sendPacket = new DatagramPacket(msg, msg.length, 
-				cAdd, cPort);
-		
-		
-		if(verbose)
-			TFTPTools.printPacketInfo(true, sendPacket);
-			
+		if (verbose) 
+			TFTPTools.printPacketInfo(terminal, true, sendPacket);
 		TFTPTools.toSendPacket(sendSocket, sendPacket);
 		
-		if(verbose)
-			System.out.println("Server-packet sent");
-		*/
+		File file = new File(TFTPServer.getDirectory(), filename); //new file instance
+		int blockNum = 1;
+		try {
+			BufferedOutputStream fs = new BufferedOutputStream(new FileOutputStream(file)); //the stream to handle file transfer
+			while(true) {
+				byte[] data = new byte[DATA_SIZE];
+				receivePacket = new DatagramPacket(data, DATA_SIZE);
+				while(true) {
+					TFTPTools.toReceivePacket(sendSocket, sendPacket);
+					break;
+				}
+				if(verbose) TFTPTools.printPacketInfo(terminal, false, receivePacket); //DATA
+				
+				int error_code = -1;
+				
+				list.add(receivePacket);
+				
+				try {
+					fs.write(receivePacket.getData(), 4, receivePacket.getLength()-4); // from position 4, length is total-4 (WRQ or RRQ)
+				} catch (IOException ioe) {
+					ioe.printStackTrace();
+					System.exit(1);
+				}
+				
+				packetNum = TFTPTools.getPacketNum(receivePacket);
+				
+				byte info[] = {0, 4, receivePacket.getData()[2], receivePacket.getData()[3]}; //last two are block numbers
+				
+				blockNum++;
+				
+				if(blockNum == 65536){
+					blockNum = 0;
+				}
+				
+				if(verbose)
+					TFTPTools.printPacketInfo(terminal, true, sendPacket); //ACK
+				TFTPTools.toSendPacket(sendSocket, sendPacket);
+				
+
+				if(receivePacket.getLength() < DATA_SIZE) //last one smaller than 512 bytes
+					break; 
+			}
+			fs.close();
+		} catch (FileNotFoundException nfe) {
+			System.out.println("File not found");
+			nfe.printStackTrace();
+			System.exit(1);
+		}
+		System.out.println("File transfer from client to server is over. ");
 	}
 	
-	private void receiveFile(int port, InetAddress address, String filename) {
-		byte[] wByte = new byte[] {0, 4, 0, 0}; //ACK
-	}
+	
 	
 	private void sendFile(int port, InetAddress address, String filename) {
-		
+		byte[] data = new byte[] {0, 3, 0, 1}; //ACK
 	}
 	
 	public void toggleVerbosity() {

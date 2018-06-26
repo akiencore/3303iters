@@ -4,31 +4,35 @@ import java.net.DatagramSocket;
 
 public class TFTPTools {
 	
-	public static void printPacketInfo(boolean isSend, DatagramPacket packet) { //print packet information
+	public static void printPacketInfo(String terminal, boolean isSend, DatagramPacket packet) { //print packet information
 		if(isSend){
-			System.out.println("\nServer-sending a packet");
+			System.out.println("\n" + terminal + ": sending packet");
 			System.out.println("To Host: " + packet.getAddress());
+			System.out.println("To Port: " + packet.getPort());
 		} else {
-			System.out.println("\nServer-Receiving packet");
+			System.out.println("\n" + terminal + ": receiving packet");
 			System.out.println("From Host: " + packet.getAddress());
+			System.out.println("From Port: " + packet.getPort());
 		}
 		
 		//opcode
+		System.out.print("The type of packet is ");
 		if(packet.getData()[1] == 1){
-			System.out.println("Type: RRQ");
+			System.out.println("RRQ");
 		} else if(packet.getData()[1] == 2){
-			System.out.println("Type: WRQ");
+			System.out.println("WRQ");
 		} else if(packet.getData()[1] == 3){
-			System.out.println("Type: DATA");
+			System.out.println("DATA");
 		} else if(packet.getData()[1] == 4){
-			System.out.println("Type: ACK");
+			System.out.println("ACK");
+		} else if(packet.getData()[1] == 5){
+			System.out.println("ERROR");
 		} else {
-			System.out.println("Packet type is undefined");
+			System.out.println("undefined");
 		}
 		
 		
-		System.out.println("Port: " + packet.getPort());
-		System.out.println("Length: " + packet.getLength());
+		System.out.println("The length of packet is: " + packet.getLength());
 		
 		if(packet.getData()[1] == 1 || packet.getData()[1] == 2){ //RRQ or WRQ
 			System.out.print("Filename: ");
@@ -53,12 +57,16 @@ public class TFTPTools {
 		
 		if((packet.getData()[1] == 3) || (packet.getData()[1] == 4)){ //DATA or ACK
 			System.out.print("Packet Number: ");
-			System.out.println((((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF));
+			System.out.println(getPacketNum(packet));
 		}
 		
 		if(packet.getData()[1] == 3){ //show data size
 			System.out.println("Size of data(in byte): " + (packet.getLength()-4));
 		}
+	}
+	
+	public static int getPacketNum(DatagramPacket packet) {
+		return (((int) (packet.getData()[2] & 0xFF)) << 8) + (((int) packet.getData()[3]) & 0xFF);
 	}
 	
 	public static void toReceivePacket(DatagramSocket socket, DatagramPacket packet) { //receive packet

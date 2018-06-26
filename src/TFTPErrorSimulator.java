@@ -22,6 +22,8 @@ public class TFTPErrorSimulator {
 	
 	private static final int DATA_SIZE = 516; //max data size (in bytes)
 	
+	private static String terminal = "Error Simulator";
+	
 	public TFTPErrorSimulator() {
 		try {
 			clientSocket = new DatagramSocket(CLIENT_PORT);
@@ -47,15 +49,13 @@ public class TFTPErrorSimulator {
 		
 		while(true) {
 			data = new byte[DATA_SIZE];
-			if (verbose)
-				System.out.println("\nSimulator is waiting for packet.");
 			
 			receivePacket = new DatagramPacket(data, DATA_SIZE);
 
 			TFTPTools.toReceivePacket(clientSocket, receivePacket);
 			
 			if (verbose)
-				TFTPTools.printPacketInfo(false, receivePacket);
+				TFTPTools.printPacketInfo(terminal, false, receivePacket);
 			
 			cAdd = receivePacket.getAddress(); //get the address of the client
 			cPort = receivePacket.getPort();   //get the port of the client
@@ -64,34 +64,34 @@ public class TFTPErrorSimulator {
 				sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), sAdd, 69);
 				TFTPTools.toSendPacket(serverSocket, sendPacket);
 				if (verbose)
-					TFTPTools.printPacketInfo(true,sendPacket);
+					TFTPTools.printPacketInfo(terminal, true,sendPacket);
 				
 				data = new byte[DATA_SIZE];
 				if (verbose)
-					System.out.println("\nSimulator is waiting for packet.");
+					System.out.println("\nSimulator: waiting for packet.");
 				
 				receivePacket = new DatagramPacket(data, DATA_SIZE);
 						
 				TFTPTools.toReceivePacket(serverSocket, receivePacket);
 				if (verbose)
-					TFTPTools.printPacketInfo(false,receivePacket);
+					TFTPTools.printPacketInfo(terminal, false,receivePacket);
 				sPort = receivePacket.getPort(); //to get the port of the server
 			} else { //DATA or ACK or ERROR
 				if(sPort > 0) {
 					sendPacket = new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), sAdd, sPort);
 					TFTPTools.toSendPacket(serverSocket, sendPacket);
 					if (verbose)
-						TFTPTools.printPacketInfo(true,sendPacket);
+						TFTPTools.printPacketInfo(terminal, true,sendPacket);
 					
 					data = new byte[DATA_SIZE];
 					if (verbose)
-						System.out.println("\nSimulator is waiting for packet.");
+						System.out.println("\nSimulator: waiting for packet.");
 					
 					receivePacket = new DatagramPacket(data, DATA_SIZE);
 							
 					TFTPTools.toReceivePacket(serverSocket, receivePacket);
 					if (verbose)
-						TFTPTools.printPacketInfo(false,receivePacket);
+						TFTPTools.printPacketInfo(terminal, false, receivePacket);
 				}
 			}
 				
@@ -99,7 +99,7 @@ public class TFTPErrorSimulator {
 					
 			TFTPTools.toSendPacket(clientSocket, sendPacket);
 			if (verbose)
-				TFTPTools.printPacketInfo(true,sendPacket);
+				TFTPTools.printPacketInfo(terminal, true,sendPacket);
 		}
 	}
 	
